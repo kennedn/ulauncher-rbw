@@ -1,0 +1,15 @@
+{
+    "api_version": "3",
+    "authors": "Varac",
+    "name": "rbw",
+    "icon": "./images/bitwarden-icon.png",
+    "instructions": "Get passwords from Bitwarden using rbw.",
+    "preferences": [
+        {
+            "id": "rbw",
+            "type": "keyword",
+            "name": "rbw",
+            "default_value": "rbw"
+        }
+    ]
+}
