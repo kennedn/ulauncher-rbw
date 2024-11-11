@@ -28,8 +28,7 @@ class RbwExtension(Extension):
     def on_item_enter(self, data: dict) -> None:
         """Copy password for entry to clipboard."""
         # logging.info("rbw extension: entry selected: id=%s", data["id"])
-        pw = subprocess.check_output(["rbw", "get", data["id"]]).decode("utf-8")  # noqa: S607
-
+        pw = subprocess.check_output(["rbw", "get", data["id"]]).decode("utf-8").strip()  # noqa: S607
         return actions.copy(pw)
 
 
