@@ -6,7 +6,8 @@ import subprocess
 import time
 from gi.repository import Gtk, Gdk
 
-from ulauncher.api import Extension, Result
+from ulauncher.api.client.Extension import Extension
+from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem as Result
 from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
 from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction
 
