@@ -1,5 +1,6 @@
 {
-    "api_version": "3",
+    "required_api_version": "2",
+    "manifest_version": "2",
     "authors": "Varac,kennedn",
     "name": "rbw",
     "icon": "./images/bitwarden-icon.png",
