@@ -1,15 +1,19 @@
 # noqa: INP001
 """rbw ulauncher extension."""
 
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gtk, Gdk
+
 import logging
 import subprocess
 import time
-from gi.repository import Gtk, Gdk
 
 from ulauncher.api.client.Extension import Extension
 from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem as Result
 from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
-from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction
+from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction  # (unused in your snippet)
 
 clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
