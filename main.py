@@ -4,11 +4,13 @@
 import logging
 import subprocess
 import time
+from gi.repository import Gtk, Gdk
 
 from ulauncher.api import Extension, Result
 from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction
-from ulauncher.internals import actions
+from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction
 
+clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 
 class RbwExtension(Extension):
     """rbw extension."""
@@ -29,7 +31,9 @@ class RbwExtension(Extension):
         """Copy password for entry to clipboard."""
         # logging.info("rbw extension: entry selected: id=%s", data["id"])
         pw = subprocess.check_output(["rbw", "get", data["id"]]).decode("utf-8").strip()  # noqa: S607
-        return actions.copy(pw)
+        print(pw)
+        clipboard.set_text(pw, -1)
+        clipboard.store()
 
 
 if __name__ == "__main__":
