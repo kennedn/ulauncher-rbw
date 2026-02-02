@@ -1,6 +1,5 @@
 {
     "required_api_version": "3",
-    "manifest_version": "3",
     "name": "rbw",
     "description": "Get passwords from Bitwarden using rbw.",
     "developer_name": "kennedn",
