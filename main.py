@@ -1,84 +1,111 @@
-# noqa: INP001
-"""rbw ulauncher extension."""
+from __future__ import annotations
 
-import logging
 import subprocess
-import time
+from typing import List, Tuple
 
-import gi
+from ulauncher.api.client.Extension import Extension
+from ulauncher.api.client.EventListener import EventListener
+from ulauncher.api.shared.event import KeywordQueryEvent
+from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem
+from ulauncher.api.shared.action.RenderResultListAction import RenderResultListAction
+from ulauncher.api.shared.action.CopyToClipboardAction import CopyToClipboardAction
 
-# Ulauncher uses GTK3, so force GTK/GDK 3.0 BEFORE importing gi.repository
-gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, Gdk  # noqa: E402
 
-from ulauncher.api.client.Extension import Extension  # noqa: E402
-from ulauncher.api.shared.action.ExtensionCustomAction import ExtensionCustomAction  # noqa: E402
-from ulauncher.api.shared.item.ExtensionResultItem import ExtensionResultItem as Result  # noqa: E402
+Entry = Tuple[str, str, str]  # (id, name, user)
+MAX_RESULTS = 10
 
-logger = logging.getLogger(__name__)
 
-clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+def _run(cmd: List[str]) -> str:
+    return subprocess.check_output(cmd).decode("utf-8", errors="replace")
 
-entries = []
+
+def rbw_list_entries() -> List[Entry]:
+    out = _run(["rbw", "list", "--fields", "id,name,user"])  # noqa: S607
+    entries: List[Entry] = []
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            entries.append((parts[0], parts[1], parts[2]))
+    return entries
+
+
+def rbw_get_password(entry_id: str) -> str:
+    return _run(["rbw", "get", entry_id]).strip()  # noqa: S607
 
 
 class RbwExtension(Extension):
-    """rbw extension."""
+    def __init__(self):
+        super(RbwExtension, self).__init__()
+        self.subscribe(KeywordQueryEvent, KeywordQueryEventListener())
 
-    def on_input(self, input_text: str, trigger_id: str):  # noqa: ARG002
-        """Filter entries by input_text."""
-        text = (input_text or "").strip()
 
-        # entries are [id, name, user]
-        matching = [
-            e for e in entries
-            if len(e) >= 3 and (text.lower() in (e[1] + " " + e[2]).lower())
-        ]
+class KeywordQueryEventListener(EventListener):
+    def on_event(self, event, extension):  # noqa: ARG002
+        query = (event.get_argument() or "").strip().lower()
+        items = []
 
-        for entry_id, name, user, *_rest in matching:
-            yield Result(
-                name=name,
-                description=user,
-                on_enter=ExtensionCustomAction({"id": entry_id}),
+        # If no query, show nothing (same behavior as the reference)
+        if len(query) < 1:
+            return RenderResultListAction(items)
+
+        try:
+            entries = rbw_list_entries()
+        except Exception as e:  # noqa: BLE001
+            items.append(
+                ExtensionResultItem(
+                    icon="images/bitwarden-icon.png",
+                    highlightable=False,
+                    name=f"rbw error: {e}",
+                    description="rbw may be locked. Unlock it and try again.",
+                    on_enter=CopyToClipboardAction(str(e)),
+                )
+            )
+            return RenderResultListAction(items)
+
+        matches = [
+            (entry_id, name, user)
+            for (entry_id, name, user) in entries
+            if query in (name + " " + user).lower()
+        ][:MAX_RESULTS]
+
+        if not matches:
+            items.append(
+                ExtensionResultItem(
+                    icon="images/bitwarden-icon.png",
+                    highlightable=False,
+                    name="No matches",
+                    description="Try a different search.",
+                    on_enter=CopyToClipboardAction(""),
+                )
+            )
+            return RenderResultListAction(items)
+
+        # Reference-style: each row has CopyToClipboardAction directly.
+        # We fetch the password for each displayed item (max 10).
+        for entry_id, name, user in matches:
+            try:
+                pw = rbw_get_password(entry_id)
+                desc = "Press 'enter' to copy password to clipboard."
+                on_enter = CopyToClipboardAction(pw)
+            except Exception as e:  # noqa: BLE001
+                desc = "Failed to fetch password (is rbw locked?)."
+                on_enter = CopyToClipboardAction("")
+                pw = ""  # not used; keep simple
+
+            items.append(
+                ExtensionResultItem(
+                    icon="images/bitwarden-icon.png",
+                    name=name,
+                    description=user if user else desc,
+                    on_enter=on_enter,
+                )
             )
 
-    def on_item_enter(self, data: dict) -> None:
-        """Copy password for entry to clipboard."""
-        entry_id = data.get("id")
-        if not entry_id:
-            return
-
-        pw = subprocess.check_output(["rbw", "get", entry_id]).decode("utf-8").strip()  # noqa: S607
-        clipboard.set_text(pw, -1)
-        clipboard.store()
-
-
-def load_entries() -> list:
-    """Load rbw entries as a list of [id, name, user]."""
-    entries_str = subprocess.check_output(  # noqa: S607
-        ["rbw", "list", "--fields", "id,name,user"]
-    ).decode("utf-8")
-
-    lines = [ln for ln in entries_str.splitlines() if ln.strip()]
-    return [ln.split("\t") for ln in lines]
+        return RenderResultListAction(items)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    logger.info("rbw extension: started")
-
-    # TODO: Remove while loop when https://github.com/Ulauncher/Ulauncher/issues/1063 is merged
-    while not entries:
-        try:
-            entries = load_entries()
-            logger.info("rbw extension: loaded entries=%d", len(entries))
-        except subprocess.CalledProcessError as err:
-            logger.critical("rbw extension: rbw list failed (pin entry cancelled?)")
-            logger.critical(getattr(err, "output", err))
-        except Exception as err:  # noqa: BLE001
-            logger.critical("rbw extension: rbw list failed: %s", err)
-        time.sleep(1)
-
     RbwExtension().run()
 
