@@ -1,9 +1,9 @@
 {
     "required_api_version": "3",
     "manifest_version": "3",
-    "authors": "Varac,kennedn",
     "name": "rbw",
     "description": "Get passwords from Bitwarden using rbw.",
+    "developer_name": "kennedn",
     "icon": "./images/bitwarden-icon.png",
     "preferences": [
         {
