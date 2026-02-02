@@ -3,8 +3,8 @@
     "manifest_version": "3",
     "authors": "Varac,kennedn",
     "name": "rbw",
+    "description": "Get passwords from Bitwarden using rbw.",
     "icon": "./images/bitwarden-icon.png",
-    "instructions": "Get passwords from Bitwarden using rbw.",
     "preferences": [
         {
             "id": "rbw",
